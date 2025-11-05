@@ -1,0 +1,242 @@
+Here’s a **complete README** and `.env.example` for your project with detailed instructions, features, and commands. You can save them as `README.md` and `.env.example` in your project root.
+
+---
+
+# AI Knowledge Assistant (RAG + Groq + Qdrant + MongoDB)
+
+## Overview
+
+This project is an **AI Knowledge Assistant** built with:
+
+* **Qdrant**: vector database for semantic search.
+* **Sentence Transformers**: generate embeddings from PDFs.
+* **LangChain Groq**: optional LLM for context-based answers.
+* **MongoDB**: store chat history.
+* **FastAPI**: backend API.
+* **Frontend**: mobile-responsive HTML/JS interface.
+* **Streamlit (optional)**: for quick RAG demos.
+
+It allows you to:
+
+1. Create embeddings from PDF documents.
+2. Search documents semantically.
+3. Retrieve relevant chunks for a query.
+4. Optionally generate answers using Groq LLM.
+5. Maintain chat history in MongoDB.
+6. Access via browser (Netlify deployment possible for frontend).
+
+---
+
+## Features
+
+### Embeddings & Vector Search
+
+* PDF ingestion and text extraction via **PyMuPDF**.
+* Chunking with overlap for accurate semantic search.
+* Embeddings generation with **SentenceTransformer**.
+* Store embeddings in **Qdrant** collection.
+* Query via FastAPI `/rag` endpoint.
+
+### AI Answer Generation
+
+* Optionally generate answers using **Groq LLM**.
+* Answers based only on retrieved context.
+* Supports multiple chunks and summarization.
+
+### Chat History
+
+* All queries, retrieved chunks, and answers stored in **MongoDB**.
+* `/history` endpoint to fetch chat history.
+* Frontend displays history with clickable items.
+
+### Frontend
+
+* Mobile and desktop responsive.
+* Sidebar for history, main chat area, and input footer.
+* Smooth scrolling and auto-update.
+* Supports multiple chats.
+
+### Backend
+
+* **FastAPI** with CORS enabled for frontend communication.
+* `/rag` endpoint: submit query, get retrieved chunks and optional answer.
+* `/history` endpoint: fetch chat history.
+
+### Utilities
+
+* **main.py**: create embeddings for all PDFs in a directory and upload to Qdrant.
+* **embeddings.py**: core embedding, chunking, and upsert logic.
+* **index.html**: standalone frontend.
+* **RunningKey.md**: sample commands for embedding creation and Qdrant Docker usage.
+
+---
+
+## Installation & Setup
+
+1. **Clone the repository**
+
+```bash
+git clone <your-repo-url>
+cd <repo-folder>
+```
+
+2. **Create a virtual environment & install dependencies**
+
+```bash
+python -m venv venv
+source venv/bin/activate   # Linux/macOS
+venv\Scripts\activate      # Windows
+
+pip install -r requirements.txt
+```
+
+3. **Setup environment variables**
+
+* Copy `.env.example` to `.env` and update as needed:
+
+```bash
+cp .env.example .env
+```
+
+* `.env.example`:
+
+```env
+# Directory where all PDF folders exist
+PDF_DIR=C:\Users\abc1\Documents\Datasets
+
+# Qdrant (Docker local)
+QDRANT_URL=http://localhost:6333
+QDRANT_API_KEY=
+
+# Qdrant collection name
+QDRANT_COLLECTION=documents
+
+# Embedding model (free, small & good for RAG)
+EMBED_MODEL=sentence-transformers/all-MiniLM-L6-v2
+
+# Optional Groq LLM API key (if you want to use Groq)
+GROQ_API_KEY=
+
+# MongoDB Atlas URI
+MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net
+```
+
+4. **Run Qdrant via Docker**
+
+```bash
+docker run -d -p 6333:6333 -v C:\qdrant_data:/qdrant/storage qdrant/qdrant
+```
+
+**For running existing**
+```docker start happy_pascal
+happy_pascal```
+
+> For backup or restore, adjust volume mapping.
+
+---
+
+## Creating Embeddings
+
+Use **main.py** to process PDFs and upload embeddings to Qdrant:
+
+```bash
+python main.py --pdf-dir "C:\Users\abc1\Documents\Datasets\23 july"
+python main.py --pdf-dir "C:\Users\abc1\Documents\Datasets\26 july"
+```
+
+Optional arguments:
+
+| Argument           | Default / Env      | Description                   |
+| ------------------ | ------------------ | ----------------------------- |
+| `--pdf-dir`        | PDF\_DIR           | Folder containing PDFs        |
+| `--qdrant-url`     | QDRANT\_URL        | Qdrant API URL                |
+| `--qdrant-api-key` | QDRANT\_API\_KEY   | Optional API key              |
+| `--collection`     | QDRANT\_COLLECTION | Qdrant collection name        |
+| `--model`          | EMBED\_MODEL       | Embedding model               |
+| `--chunk-size`     | 800                | Chunk size (characters)       |
+| `--chunk-overlap`  | 128                | Chunk overlap                 |
+| `--batch-size`     | 128                | Batch size for Qdrant upserts |
+
+---
+
+## Running the Backend API
+
+```bash
+uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Endpoints:
+
+* **POST /rag**: submit a query
+
+```json
+{
+  "query": "Explain RAG pipeline",
+  "top_k": 5
+}
+```
+
+Returns retrieved chunks and optional Groq answer.
+
+* **GET /history**: fetch chat history
+
+---
+
+## Frontend
+
+Open `index.html` in browser or deploy via **Netlify**.
+
+* Uses `/rag` and `/history` endpoints to display chat and history.
+* Mobile-responsive with sidebar and smooth scrolling.
+* Supports multiple chats and click-to-load history items.
+
+---
+
+## Optional: Streamlit Demo
+
+If you want a quick demo UI:
+
+```bash
+streamlit run app.py
+```
+
+---
+
+## Dependencies
+
+* `sentence-transformers`
+* `qdrant-client`
+* `pymupdf`
+* `streamlit`
+* `python-dotenv`
+* `langchain-groq` (optional for Groq LLM)
+* `fastapi`
+* `uvicorn`
+* `pymongo`
+
+---
+
+## Project Structure
+
+```
+.
+├── app.py            # Optional Streamlit RAG demo
+├── embeddings.py     # PDF processing & embedding upload
+├── index.html        # Frontend interface
+├── main.py           # CLI to create embeddings
+├── requirements.txt
+├── .env.example
+├── RunningKey.md     # Example commands for embeddings & Docker
+└── README.md
+```
+
+---
+
+## Notes
+
+* Ensure Qdrant is running locally or accessible via network.
+* MongoDB Atlas URI required to store chat history.
+* Groq API is optional; system works without it, only shows retrieved chunks.
+* PDFs are chunked into overlapping segments for more accurate RAG search.
+
+---

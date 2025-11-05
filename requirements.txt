@@ -1,0 +1,12 @@
+sentence-transformers
+qdrant-client
+pymupdf
+streamlit
+tqdm
+PyMuPDF
+python-dotenv
+# optional for LLM generation:
+langchain-groq  # only if you will call Groq LLM
+fastapi
+uvicorn
+pymongo

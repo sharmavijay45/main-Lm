@@ -1,0 +1,205 @@
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Knowledge Assistant</title>
+<style>
+body { margin:0; font-family: 'Segoe UI', sans-serif; background:#f0f4f8; height:100vh; overflow:hidden; }
+.container { display:flex; height:100%; overflow:hidden; }
+
+/* Sidebar */
+.sidebar { width:250px; background:#1e3a8a; color:#fff; flex-shrink:0; display:flex; flex-direction:column; transition: transform 0.3s ease; z-index:2; }
+.sidebar-header { display:flex; justify-content:space-between; align-items:center; padding:16px; font-size:18px; flex-shrink:0; }
+.new-chat { cursor:pointer; font-size:20px; margin-left:8px; }
+.close-sidebar { cursor:pointer; font-size:20px; display:none; margin-left:8px; }
+.history { flex:1; overflow-y:auto; padding:8px; -webkit-overflow-scrolling: touch; }
+.history-item { background:#254f9c; margin:6px 0; padding:10px; border-radius:8px; cursor:pointer; }
+.history-item:hover { background:#3366cc; }
+
+/* Main chat */
+.chat { flex:1; display:flex; flex-direction:column; justify-content:flex-end; position:relative; }
+.chat-header { padding:16px; background:#3b82f6; color:#fff; font-weight:bold; text-align:center; display:flex; justify-content:space-between; align-items:center; }
+.menu-btn { display:none; cursor:pointer; font-size:20px; }
+.chat-body { flex:1; padding:16px; overflow-y:auto; display:flex; flex-direction:column; align-items:center; scroll-behavior: smooth; background:#e0f2fe; -webkit-overflow-scrolling: touch; width:100%; }
+.chat-item { margin-bottom:12px; max-width:85%; word-wrap:break-word; }
+.user-msg { text-align:right; align-self:flex-end; max-width:85%; margin-right:8px; }
+.user-msg .text { display:inline-block; background:#60a5fa; color:#fff; padding:8px 12px; border-radius:12px; }
+.ai-msg { text-align:left; align-self:flex-start; max-width:85%; margin-left:8px; }
+.ai-msg .text { display:inline-block; background:#93c5fd; color:#000; padding:8px 12px; border-radius:12px; }
+.chunks { margin-top:4px; background:#1e3a8a; padding:6px; border-radius:8px; color:#fff; font-size:12px; }
+.chunk-item { margin-bottom:4px; }
+
+/* Footer */
+.chat-footer { display:flex; border-top:1px solid #ccc; padding:8px; justify-content:center; flex-shrink:0; }
+.chat-footer input { flex:0 0 60%; padding:10px; border:none; outline:none; font-size:14px; border-radius:8px; }
+.chat-footer button { margin-left:8px; padding:10px 16px; background:#3b82f6; color:#fff; border:none; cursor:pointer; border-radius:8px; }
+
+/* Mobile adjustments */
+@media(max-width:768px){
+  .container { flex-direction:column; height:100vh; }
+  .sidebar { position:fixed; height:100%; top:0; left:0; transform:translateX(-100%); width:250px; box-shadow:2px 0 6px rgba(0,0,0,0.2); background:#1e3a8a; -webkit-overflow-scrolling: touch; }
+  .sidebar.active { transform:translateX(0); }
+  .chat { flex:1; display:flex; flex-direction:column; height:100vh; }
+  .chat-header { justify-content:space-between; flex-shrink:0; }
+  .menu-btn { display:inline; }
+  .chat-body { flex:1; overflow-y:auto; -webkit-overflow-scrolling: touch; padding:16px; }
+  .chat-footer { flex-shrink:0; }
+  .chat-footer input { flex:1; }
+  .close-sidebar { display:inline; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span>History</span>
+      <div>
+        <span class="new-chat" onclick="startNewChat()">&#43;</span>
+        <span class="close-sidebar" onclick="toggleSidebar(false)">&#10005;</span>
+      </div>
+    </div>
+    <div class="history" id="history"></div>
+  </div>
+
+  <div class="chat" id="chatContainer">
+    <div class="chat-header">
+      <span class="menu-btn" onclick="toggleSidebar(true)">&#9776;</span>
+      AI Knowledge Assistant
+      <span></span>
+    </div>
+    <div class="chat-body" id="chatBody"></div>
+    <div class="chat-footer">
+      <input type="text" id="query" placeholder="Type your question...">
+      <button onclick="sendQuery()">Ask</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_URL = "https://819d053306f2.ngrok-free.app/rag";
+const HISTORY_URL = "https://819d053306f2.ngrok-free.app/history";
+
+let history = [];
+let currentChatIndex = -1;
+
+// Load history from backend
+async function loadHistory() {
+  try {
+    const res = await fetch(HISTORY_URL);
+    history = await res.json();
+    if(history.length) currentChatIndex = history.length - 1;
+    renderHistory();
+    renderChat();
+  } catch(err){ console.error(err); }
+}
+
+function renderHistory() {
+  const historyDiv = document.getElementById("history");
+  historyDiv.innerHTML = "";
+  history.forEach((item,index)=>{
+    const div = document.createElement("div");
+    div.className = "history-item";
+    div.innerText = item.query || "(No query)";
+    div.onclick = () => {
+      currentChatIndex = index;
+      renderChat();
+      toggleSidebar(false);
+    };
+    historyDiv.appendChild(div);
+  });
+}
+
+// Toggle sidebar on mobile
+function toggleSidebar(forceOpen=false){
+  const sidebar = document.getElementById("sidebar");
+  if(forceOpen===true){
+    sidebar.classList.add("active");
+  } else if(forceOpen===false){
+    sidebar.classList.remove("active");
+  } else {
+    sidebar.classList.toggle("active");
+  }
+}
+
+// Close sidebar when clicking outside
+document.addEventListener("click", function(event){
+  const sidebar = document.getElementById("sidebar");
+  if(window.innerWidth <= 768 && sidebar.classList.contains("active")){
+    if(!sidebar.contains(event.target) && !event.target.classList.contains("menu-btn")){
+      sidebar.classList.remove("active");
+    }
+  }
+});
+
+function renderChat() {
+  const chatBody = document.getElementById("chatBody");
+  chatBody.innerHTML = "";
+  if(currentChatIndex<0 || !history[currentChatIndex]) return;
+  const chat = history[currentChatIndex];
+
+  if(chat.query){ 
+    const userDiv = document.createElement("div");
+    userDiv.className = "chat-item user-msg";
+    userDiv.innerHTML = `<div class="text">${chat.query}</div>`;
+    chatBody.appendChild(userDiv);
+  }
+
+  if(chat.groq_answer || (chat.retrieved_chunks && chat.retrieved_chunks.length)){
+    const aiDiv = document.createElement("div");
+    aiDiv.className = "chat-item ai-msg";
+    let chunksHTML = "";
+    if(chat.retrieved_chunks){
+      chunksHTML = `<div class="chunks">` + chat.retrieved_chunks.map(c=>`<div class="chunk-item"><b>${c.file || "Unknown"}</b>: ${c.content}</div>`).join("") + `</div>`;
+    }
+    aiDiv.innerHTML = `<div class="text">${chat.groq_answer || "No answer"}</div>${chunksHTML}`;
+    chatBody.appendChild(aiDiv);
+  }
+
+  // Auto scroll to bottom smoothly
+  chatBody.scrollTop = chatBody.scrollHeight;
+}
+
+function startNewChat(){
+  currentChatIndex = -1;
+  renderChat();
+}
+
+async function sendQuery(){
+  const queryInput = document.getElementById("query");
+  const query = queryInput.value.trim();
+  if(!query) return;
+
+  if(currentChatIndex<0){
+    history.push({query:"", groq_answer:"", retrieved_chunks:[]});
+    currentChatIndex = history.length -1;
+  }
+
+  history[currentChatIndex] = {query, groq_answer:"Thinking...", retrieved_chunks:[]};
+  renderHistory();
+  renderChat();
+
+  try{
+    const res = await fetch(API_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({query})
+    });
+    const data = await res.json();
+    history[currentChatIndex] = {...history[currentChatIndex], groq_answer: data.groq_answer, retrieved_chunks: data.retrieved_chunks};
+    renderHistory();
+    renderChat();
+  }catch(err){ console.error(err);}
+  queryInput.value = "";
+}
+
+loadHistory();
+</script>
+
+</body>
+</html>
