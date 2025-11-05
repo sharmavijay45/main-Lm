@@ -412,8 +412,13 @@ def lesson_play(req: LessonPlayRequest):
     log_insightflow({"type": "lesson_play", "lesson_id": req.lesson_id, "parts": len(playlist)})
     return {"playlist": playlist}
 
+# ✅ Root Health Endpoints: REQUIRED for Render
+@app.get("/")
+def home():
+    return {"status": "running ✅", "message": "Deployment successful"}
 
 @app.get("/history")
 def get_history():
     chats = list(history_collection.find({}, {"_id":0}).sort("timestamp", 1))  # chronological
     return chats
+
