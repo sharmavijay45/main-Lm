@@ -778,29 +778,26 @@ def rag_query(request: QueryRequest):
             answer = "Groq not configured. Only showing retrieved context."
     except Exception as e:
         print("Groq main client error:", e)
-        # handle RateLimitError if groq SDK raises it
-        try:
-            from groq import RateLimitError  # local import to avoid top-level
-            is_rate = isinstance(e, RateLimitError)
-        except Exception:
-            is_rate = False
-
-        if is_rate:
-            groq_fb = groq_fallback_client()
-            if groq_fb and retrieved_chunks:
-                try:
-                    best_chunk = max(retrieved_chunks, key=lambda c: c.get("score") or 0)
-                    answer = ask_groq(request.query, best_chunk["content"], groq_fb)
-                except Exception as e2:
-                    print("Fallback groq failed:", e2)
-                    answer = f"(Rate limit reached) Top context:\n{best_chunk.get('content')}"
-            elif retrieved_chunks:
+        # Try fallback Groq client first
+        groq_fb = groq_fallback_client()
+        if groq_fb and retrieved_chunks:
+            try:
                 best_chunk = max(retrieved_chunks, key=lambda c: c.get("score") or 0)
-                answer = f"(Rate limit reached) Top context:\n{best_chunk.get('content')}"
-            else:
-                answer = "(Rate limit reached) No context available."
+                answer = ask_groq(request.query, best_chunk["content"], groq_fb)
+            except Exception as e2:
+                print("Fallback groq failed:", e2)
+                # Fall back to direct answer without enhancement
+                if retrieved_chunks:
+                    best_chunk = max(retrieved_chunks, key=lambda c: c.get("score") or 0)
+                    answer = f"Direct answer from context:\n{best_chunk.get('content')}"
+                else:
+                    answer = "No context available."
+        elif retrieved_chunks:
+            # No fallback Groq, show direct answer
+            best_chunk = max(retrieved_chunks, key=lambda c: c.get("score") or 0)
+            answer = f"Direct answer from context:\n{best_chunk.get('content')}"
         else:
-            answer = f"(Groq error) {e}"
+            answer = "No context available."
 
     # Save to MongoDB history (including context)
     try:
