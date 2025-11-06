@@ -609,7 +609,7 @@ class VaaniClient:
         tts_cache = None
         if mongo:
             tts_cache = mongo.get("tts_cache_collection")
-        if tts_cache:
+        if tts_cache is not None:
             cached = tts_cache.find_one({"_id": text_hash})
             if cached:
                 return {"audio_url": cached.get("audio_url"), "cache_status": "hit", "meta": cached.get("meta")}
@@ -622,7 +622,7 @@ class VaaniClient:
         r.raise_for_status()
         data = r.json()
         audio_url = data.get("audio_url") or data.get("url") or data.get("data")
-        if tts_cache:
+        if tts_cache is not None:
             tts_cache.replace_one({"_id": text_hash}, {"audio_url": audio_url, "meta": data, "text": text, "created_at": datetime.datetime.utcnow()}, upsert=True)
         return {"audio_url": audio_url, "cache_status": "miss", "meta": data}
 
@@ -682,7 +682,7 @@ def log_insightflow(entry: dict):
         insightflow = get_insightflow_collection()
         entry_copy = dict(entry)
         entry_copy.setdefault("timestamp", datetime.datetime.utcnow())
-        if insightflow:
+        if insightflow is not None:
             insightflow.insert_one(entry_copy)
         else:
             # No mongo - print for debugging
@@ -711,7 +711,7 @@ def retrieve_docs(query: str, k: int = 5) -> List[dict]:
         return []
 
     try:
-        results = qdrant.query_points(collection_name=COLLECTION_NAME, query=vec, limit=k).points
+        results = qdrant.search(collection_name=COLLECTION_NAME, query_vector=vec, limit=k)
     except Exception as e:
         print("Qdrant query failed:", e)
         return []
@@ -812,7 +812,7 @@ def rag_query(request: QueryRequest):
             "context": [item.dict() for item in request.context] if request.context else [],
             "timestamp": datetime.datetime.utcnow()
         }
-        if hist_col:
+        if hist_col is not None:
             hist_col.insert_one(hist_doc)
         else:
             print("History store skipped (mongo not configured).")
@@ -885,7 +885,7 @@ def vaani_converse(req: VaaniConverseRequest):
     try:
         if req.session_id:
             hist_col = get_history_collection()
-            if hist_col:
+            if hist_col is not None:
                 docs = list(hist_col.find({"session_id": req.session_id}).sort("timestamp", -1).limit(6))
                 for d in reversed(docs):
                     context_items.append(ContextItem(sender="user", content=d.get("query", ""), timestamp=str(d.get("timestamp"))))
@@ -913,7 +913,7 @@ def vaani_converse(req: VaaniConverseRequest):
         hist_doc = {"query": req.message, "groq_answer": lm_text, "retrieved_chunks": res.get("retrieved_chunks", []), "timestamp": datetime.datetime.utcnow()}
         if req.session_id:
             hist_doc["session_id"] = req.session_id
-        if hist_col:
+        if hist_col is not None:
             hist_col.insert_one(hist_doc)
     except Exception as e:
         print("History insert failed:", e)
@@ -970,7 +970,7 @@ def home():
 def get_history():
     try:
         hist_col = get_history_collection()
-        if not hist_col:
+        if hist_col is None:
             return {"error": "history store not configured"}
         chats = list(hist_col.find({}, {"_id": 0}).sort("timestamp", 1))
         return chats
