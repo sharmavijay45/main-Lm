@@ -1,3 +1,14 @@
+# fastapi
+# uvicorn
+# sentence-transformers
+# qdrant-client
+# pymongo
+# python-dotenv
+# tqdm
+# streamlit
+# PyMuPDF
+# langchain-groq
+
 PyMuPDF
 fastapi==0.110.0
 uvicorn==0.29.0
@@ -8,4 +19,4 @@ qdrant-client==1.9.0
 langchain-groq
 groq
 sentence-transformers==2.2.2
-torch==2.2.2+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.2.1+cpu --extra-index-url https://download.pytorch.org/whl/cpu
