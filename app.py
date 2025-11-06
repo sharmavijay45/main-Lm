@@ -445,7 +445,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Basic config (read from env)
-QDRANT_URL = os.getenv("QDRANT_URL", "https://f4b538f3-6d33-4dcf-943a-93e11205ff57.us-east4-0.gcp.cloud.qdrant.io")
+QDRANT_URL = "https://f4b538f3-6d33-4dcf-943a-93e11205ff57.us-east4-0.gcp.cloud.qdrant.io"
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", None)
 COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "documents")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
